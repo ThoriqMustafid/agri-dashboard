@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
@@ -8,6 +8,12 @@
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
 <body class="min-h-screen bg-neutral-50 text-neutral-900 p-8 font-sans selection:bg-emerald-200">
+  
+  <div id="toast" class="fixed bottom-8 right-8 bg-neutral-900 text-white px-6 py-4 rounded-xl shadow-2xl transform transition-all duration-300 translate-y-24 opacity-0 flex items-center gap-3 z-50 pointer-events-none">
+    <span id="toast-icon" class="text-xl">✅</span>
+    <span id="toast-message" class="text-sm font-medium tracking-wide">Pesan</span>
+  </div>
+
   <div class="max-w-5xl mx-auto space-y-8">
     
     <header class="flex flex-col md:flex-row md:justify-between md:items-end border-b border-neutral-200 pb-6 gap-4">
@@ -93,10 +99,35 @@
   </div>
 
   <script>
+    let toastTimeout;
+
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      const msgEl = document.getElementById('toast-message');
+      const iconEl = document.getElementById('toast-icon');
+
+      msgEl.innerText = message;
+      iconEl.innerText = isError ? '❌' : '✅';
+      
+      if (isError) {
+        toast.classList.replace('bg-neutral-900', 'bg-red-600');
+      } else {
+        toast.classList.replace('bg-red-600', 'bg-neutral-900');
+      }
+
+      toast.classList.remove('translate-y-24', 'opacity-0');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.add('translate-y-24', 'opacity-0');
+      }, 3000);
+    }
+
     const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 
     client.on('connect', () => {
       client.subscribe('agrismart/tda_8840hs/sensors');
+      showToast('Terhubung ke server Agri-Smart');
     });
 
     client.on('message', (topic, message) => {
@@ -129,9 +160,12 @@
       if (client.connected) {
         const payload = JSON.stringify({ action: "toggle_pump", target: targetName });
         client.publish('agrismart/tda_8840hs/control', payload);
-        alert(`Perintah MQTT dikirim: Pompa ${targetName}`);
+        
+        let targetLabel = targetName === 'nutrient' ? 'Nutrisi' : 
+                          targetName === 'phUp' ? 'pH UP' : 'pH DOWN';
+        showToast(`Perintah terkirim: Pompa ${targetLabel}`);
       } else {
-        alert("Gagal: MQTT belum terhubung.");
+        showToast("Gagal: Terputus dari server.", true);
       }
     };
   </script>
