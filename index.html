@@ -1,0 +1,139 @@
+  <!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agri-Smart Native</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body class="min-h-screen bg-neutral-50 text-neutral-900 p-8 font-sans selection:bg-emerald-200">
+  <div class="max-w-5xl mx-auto space-y-8">
+    
+    <header class="flex flex-col md:flex-row md:justify-between md:items-end border-b border-neutral-200 pb-6 gap-4">
+      <div>
+        <h1 class="text-4xl font-light tracking-tight text-neutral-950">Agri-Smart</h1>
+        <p class="text-sm font-medium tracking-widest text-neutral-400 uppercase mt-2">Sistem Hidroponik</p>
+      </div>
+      <div class="flex gap-4">
+        <div class="bg-white border border-neutral-200 px-4 py-2 rounded-full shadow-sm flex items-center gap-2">
+          <span id="mode-dot" class="w-2 h-2 rounded-full bg-neutral-300"></span>
+          <span id="mode-text" class="text-xs font-semibold uppercase tracking-wider">-</span>
+        </div>
+        <div class="bg-white border border-neutral-200 px-4 py-2 rounded-full shadow-sm flex items-center gap-2">
+          <span id="state-text" class="text-xs font-semibold uppercase tracking-wider">-</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm">
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Tingkat pH</h3>
+        <div class="flex items-baseline gap-2">
+          <span id="ph-val" class="text-4xl font-light text-neutral-800">0</span>
+          <span class="text-sm font-medium text-neutral-400">pH</span>
+        </div>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm">
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Nutrisi EC</h3>
+        <div class="flex items-baseline gap-2">
+          <span id="ec-val" class="text-4xl font-light text-neutral-800">0</span>
+          <span class="text-sm font-medium text-neutral-400">µS/cm</span>
+        </div>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm">
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Suhu Udara</h3>
+        <div class="flex items-baseline gap-2">
+          <span id="temp-val" class="text-4xl font-light text-neutral-800">0</span>
+          <span class="text-sm font-medium text-neutral-400">°C</span>
+        </div>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm">
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Kelembapan</h3>
+        <div class="flex items-baseline gap-2">
+          <span id="hum-val" class="text-4xl font-light text-neutral-800">0</span>
+          <span class="text-sm font-medium text-neutral-400">%</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white p-8 rounded-2xl border border-neutral-100 shadow-sm mt-8">
+      <h3 class="text-sm font-bold text-neutral-800 uppercase tracking-widest mb-6 border-b pb-4">Kontrol Pompa Manual</h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <button 
+          onclick="triggerPump('nutrient')"
+          class="flex flex-col items-center justify-center p-6 bg-neutral-900 text-white rounded-xl hover:bg-emerald-600 transition-colors shadow-md active:scale-95"
+        >
+          <span class="font-bold tracking-wide">POMPA NUTRISI</span>
+          <span class="text-xs opacity-70 mt-1">Aktif 3 Detik</span>
+        </button>
+
+        <button 
+          onclick="triggerPump('phUp')"
+          class="flex flex-col items-center justify-center p-6 bg-neutral-900 text-white rounded-xl hover:bg-emerald-600 transition-colors shadow-md active:scale-95"
+        >
+          <span class="font-bold tracking-wide">POMPA pH UP</span>
+          <span class="text-xs opacity-70 mt-1">Aktif 1 Detik</span>
+        </button>
+
+        <button 
+          onclick="triggerPump('phDown')"
+          class="flex flex-col items-center justify-center p-6 bg-neutral-900 text-white rounded-xl hover:bg-emerald-600 transition-colors shadow-md active:scale-95"
+        >
+          <span class="font-bold tracking-wide">POMPA pH DOWN</span>
+          <span class="text-xs opacity-70 mt-1">Aktif 1 Detik</span>
+        </button>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    const client = mqtt.connect('ws://broker.emqx.io:8083/mqtt');
+
+    client.on('connect', () => {
+      client.subscribe('agrismart/tda_8840hs/sensors');
+    });
+
+    client.on('message', (topic, message) => {
+      if (topic === 'agrismart/tda_8840hs/sensors') {
+        try {
+          const data = JSON.parse(message.toString());
+          
+          document.getElementById('ph-val').innerText = data.ph;
+          document.getElementById('ec-val').innerText = data.ec;
+          document.getElementById('temp-val').innerText = data.temp;
+          document.getElementById('hum-val').innerText = data.hum;
+          document.getElementById('mode-text').innerText = data.mode;
+          document.getElementById('state-text').innerText = data.state;
+
+          const modeDot = document.getElementById('mode-dot');
+          if (data.mode !== '-') {
+            modeDot.classList.replace('bg-neutral-300', 'bg-emerald-500');
+            modeDot.classList.add('animate-pulse');
+          } else {
+            modeDot.classList.replace('bg-emerald-500', 'bg-neutral-300');
+            modeDot.classList.remove('animate-pulse');
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    });
+
+    window.triggerPump = function(targetName) {
+      if (client.connected) {
+        const payload = JSON.stringify({ action: "toggle_pump", target: targetName });
+        client.publish('agrismart/tda_8840hs/control', payload);
+        alert(`Perintah MQTT dikirim: Pompa ${targetName}`);
+      } else {
+        alert("Gagal: MQTT belum terhubung.");
+      }
+    };
+  </script>
+</body>
+</html>
